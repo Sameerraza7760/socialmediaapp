@@ -146,8 +146,8 @@ export async function toggleFollow(targetUserId: string) {
         prisma.notification.create({
           data: {
             type: "FOLLOW",
-            userId: targetUserId, // user being followed
-            creatorId: userId, // user following
+            userId: targetUserId,
+            creatorId: userId,
           },
         }),
       ]);
@@ -159,4 +159,53 @@ export async function toggleFollow(targetUserId: string) {
     console.log("Error in toggleFollow", error);
     return { success: false, error: "Error toggling follow" };
   }
+}
+
+export async function getConnectedFollowers() {
+  const userId = await getDbUserId();
+  if (!userId) return [];
+
+  return prisma.user.findMany({
+    where: {
+      OR: [
+        { followers: { some: { followerId: userId } } },
+        { following: { some: { followerId: userId } } },
+      ],
+      NOT: { id: userId },
+    },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      image: true,
+    },
+  });
+}
+
+export async function searchFollowers(searchTerm: string) {
+  const userId = await getDbUserId();
+  if (!userId) return [];
+  return prisma.user.findMany({
+    where: {
+      OR: [
+        { followers: { some: { followerId: userId } } },
+        { following: { some: { followerId: userId } } },
+      ],
+      NOT: { id: userId },
+      AND: [
+        {
+          OR: [
+            { name: { contains: searchTerm, mode: "insensitive" } },
+            { username: { contains: searchTerm, mode: "insensitive" } },
+          ],
+        },
+      ],
+    },
+    select: {
+      id: true,
+      name: true,
+      username: true,
+      image: true,
+    },
+  });
 }

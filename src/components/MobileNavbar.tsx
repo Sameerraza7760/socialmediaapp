@@ -7,6 +7,7 @@ import {
   MenuIcon,
   MoonIcon,
   SunIcon,
+  MessageSquareIcon,
   UserIcon,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -64,6 +65,13 @@ function MobileNavbar() {
                   <Link href="/profile">
                     <UserIcon className="w-4 h-4" />
                     Profile
+                  </Link>
+                </Button>
+                {/* here the inbox link */}
+                <Button variant="ghost" className="flex items-center gap-3 justify-start" asChild>
+                  <Link href="/inbox">
+                    <MessageSquareIcon className="w-4 h-4" />
+                    Inbox
                   </Link>
                 </Button>
                 <SignOutButton>
