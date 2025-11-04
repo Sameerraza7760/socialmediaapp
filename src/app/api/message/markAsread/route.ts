@@ -6,7 +6,6 @@ export async function POST(request: Request) {
 
     console.log("Marking as read for chat:", chatId);
 
-    await prisma.$connect();
 
     const updatedMessages = await prisma.message.updateMany({
       where: {
