@@ -135,7 +135,8 @@ model ChatMember {
   id        String   @id @default(cuid())
   chatId    String
   senderId  String
-  text      String
+  text      String?
+  imageUrl  String?
   createdAt DateTime @default(now())
   seen      Boolean  @default(false)
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)

@@ -1,5 +1,5 @@
 import { ReactQueryProvider } from "@/providers/ReactQueryProvider";
-import { getDbUserId } from "@/actions/user.action";
+import { getDbUserId, syncUser } from "@/actions/user.action";
 import Navbar from "@/components/Navbar";
 import Sidebar from "@/components/Sidebar";
 import { ThemeProvider } from "@/components/ui/ThemeProvider";
@@ -8,6 +8,7 @@ import { ClerkProvider } from "@clerk/nextjs";
 import { Toaster } from "react-hot-toast";
 import localFont from "next/font/local";
 import type { Metadata } from "next";
+import { currentUser } from "@clerk/nextjs/server";
 
 import "./globals.css";
 
@@ -32,12 +33,16 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const user = await currentUser();
+  if (user) await syncUser();
   const dbUserId = await getDbUserId();
 
   return (
     <ClerkProvider>
       <html lang="en" suppressHydrationWarning>
-        <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        <body
+          className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        >
           <ThemeProvider
             attribute="class"
             defaultTheme="system"
