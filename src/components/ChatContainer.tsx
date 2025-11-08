@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSocketContext } from "@/context/SocketContext";
 import { MessageSkeleton } from "./MessageSkeleton";
+import VoiceRecorder from "./ui/VoiceRecorder";
 import ImageUpload from "./ImageUpload";
 import toast from "react-hot-toast";
 
@@ -17,10 +18,11 @@ type Message = {
   id: string;
   senderId: string;
   text: string;
-  createdAt: Date;
+  createdAt: string;
   seen?: boolean;
   chatId?: string;
   imageUrl?: string;
+  audioUrl?: string;
 };
 
 type ChatContainerProps = {
@@ -40,44 +42,52 @@ export default function ChatContainer({
   const [imageUrl, setImageUrl] = useState("");
   const [isPosting, setIsPosting] = useState(false);
   const [showImageUpload, setShowImageUpload] = useState(false);
-
+  const [audioUrl, setAudioUrl] = useState("");
   const { sendMessage, getMessages, messageMarkAsRead } = useMessage();
   const { socket } = useSocketContext();
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // Scroll to bottom when messages change
   useEffect(() => {
     if (scrollRef.current)
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSend = async () => {
-    if (!newMessage.trim() && !imageUrl) return;
+const handleSend = async (audio?: string) => {
+    const finalAudioUrl = audio || audioUrl;
+
+    if (!newMessage.trim() && !imageUrl && !finalAudioUrl) return;
 
     setIsPosting(true);
+
     const tempMessage: Message = {
       id: Date.now().toString(),
       senderId: dbUserId,
       text: newMessage,
       imageUrl,
-      createdAt: new Date(),
+      audioUrl: finalAudioUrl,
+      createdAt: new Date().toISOString(),
       chatId,
       seen: false,
     };
 
-    setMessages((prev) => [...prev, tempMessage]);
-    setNewMessage("");
-    setImageUrl("");
-    setShowImageUpload(false);
-
     try {
-      await sendMessage(chatId, newMessage, selectedUserId, imageUrl);
+      // Send to backend
+      await sendMessage(chatId, newMessage, imageUrl, finalAudioUrl);
+
+      // Emit socket event with plain data
       socket?.emit("sendMessage", { to: selectedUserId, message: tempMessage });
+
+      // Update local messages
+      setMessages((prev) => [...prev, tempMessage]);
     } catch (error) {
       console.error("Error sending message:", error);
       toast.error("Failed to send message");
     } finally {
       setIsPosting(false);
+      setNewMessage("");
+      setImageUrl("");
+      setAudioUrl("");
+      setShowImageUpload(false);
     }
   };
 
@@ -104,7 +114,7 @@ export default function ChatContainer({
     markAsRead();
   }, [chatId, messages]);
 
-  // ✅ Fetch messages
+  
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -123,7 +133,6 @@ export default function ChatContainer({
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       <Card className="flex flex-col h-full">
-        {/* HEADER */}
         <CardHeader className="flex items-center justify-between border-b">
           <div className="flex items-center gap-3 justify-between w-full">
             <Link href="/inbox">
@@ -138,7 +147,7 @@ export default function ChatContainer({
           </div>
         </CardHeader>
 
-        {/* MESSAGES */}
+
         <CardContent className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20 scroll-smooth">
           {loading ? (
             <MessageSkeleton />
@@ -154,7 +163,7 @@ export default function ChatContainer({
                   className={`max-w-[70%] p-3 rounded-2xl text-sm ${
                     msg.senderId === dbUserId
                       ? "bg-primary text-primary-foreground"
-                      : "bg-white dark:bg-muted"
+                      : "dark:bg-muted"
                   }`}
                 >
                   {msg.imageUrl && (
@@ -164,7 +173,19 @@ export default function ChatContainer({
                       className="rounded-md mb-2 max-w-[200px]"
                     />
                   )}
+
+                  {msg.audioUrl && (
+                    <audio
+                      controls
+                      src={msg.audioUrl}
+                      className="mt-2 rounded-md max-w-[200px]"
+                    >
+                      Your browser does not support the audio element.
+                    </audio>
+                  )}
+
                   {msg.text && <p>{msg.text}</p>}
+
                   <span className="block text-[10px] text-muted-foreground mt-1 text-right">
                     {new Date(msg.createdAt).toLocaleTimeString([], {
                       hour: "2-digit",
@@ -178,7 +199,6 @@ export default function ChatContainer({
           <div ref={scrollRef} />
         </CardContent>
 
-        {/* MESSAGE INPUT */}
         <div className="border-t p-3 flex items-center gap-2">
           {showImageUpload && (
             <div className="absolute bottom-16 left-4 right-4 bg-white border rounded-xl p-4 z-10 shadow-lg">
@@ -193,15 +213,23 @@ export default function ChatContainer({
             </div>
           )}
 
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowImageUpload(!showImageUpload)}
-            disabled={isPosting}
-          >
-            <ImageIcon className="w-5 h-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => setShowImageUpload(!showImageUpload)}
+              disabled={isPosting}
+            >
+              <ImageIcon className="w-5 h-5" />
+            </Button>
+
+            <VoiceRecorder
+              onUploadComplete={(audioUrl) => {
+                handleSend(audioUrl);
+              }}
+            />
+          </div>
 
           <Input
             placeholder="Type a message..."
@@ -212,7 +240,7 @@ export default function ChatContainer({
           />
 
           <Button
-            onClick={handleSend}
+            onClick={() => handleSend()}
             disabled={isPosting || (!newMessage.trim() && !imageUrl)}
           >
             {isPosting ? (

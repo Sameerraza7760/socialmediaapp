@@ -131,12 +131,13 @@ model ChatMember {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
- model Message {
+model Message {
   id        String   @id @default(cuid())
   chatId    String
   senderId  String
   text      String?
   imageUrl  String?
+  audioUrl  String?
   createdAt DateTime @default(now())
   seen      Boolean  @default(false)
   chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)

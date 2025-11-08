@@ -3,16 +3,16 @@ export const useMessage = () => {
   const sendMessage = async (
     chatId: string,
     text: string,
-    receiverId: string,
-    image: string
+    image: string,
+    audioUrl: string
   ) => {
-    console.log("Sending message to API:", { chatId, text, receiverId });
     try {
+      console.log("image in hook",image)
       const response = await axios.post("/api/message", {
         chatId,
         text,
-        receiverId,
         image,
+        audioUrl
       });
       return response.data;
     } catch (error) {

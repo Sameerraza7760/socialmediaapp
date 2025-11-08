@@ -1,14 +1,10 @@
-import prisma from "@/lib/prisma";
 import { getDbUserId } from "@/actions/user.action";
-import { getReceiverSocketId, getIO } from "@/lib/socket";
+import prisma from "@/lib/prisma";
 
 export async function POST(request: Request) {
   try {
-    const { chatId, text, receiverId, image } = await request.json();
+    const { chatId, text, image, audioUrl } = await request.json();
     
-
-    console.log("Received message:", { chatId, text, receiverId, image });
-
     const senderId = await getDbUserId();
     if (!senderId) {
       return new Response("Unauthorized", { status: 401 });
@@ -20,6 +16,7 @@ export async function POST(request: Request) {
         senderId,
         text,
         imageUrl: image || null,
+        audioUrl,
       },
     });
 
@@ -46,10 +43,11 @@ export async function GET(request: Request) {
         id: true,
         senderId: true,
         text: true,
-        imageUrl: true, 
+        imageUrl: true,
         createdAt: true,
         seen: true,
         chatId: true,
+        audioUrl: true,
       },
     });
 
