@@ -40,17 +40,19 @@ export function initIO(httpServer) {
     });
 
 
-     socket.on("callUser", ({ to, signalData, from, callType }) => {
+       socket.on("callUser", ({ to, signalData, from, callType }) => {
+      console.log("📞 callUser received:", { to, from, callType });
       const receiverSocketId = userSocketMap.get(to);
       if (receiverSocketId) {
         io.to(receiverSocketId).emit("incomingCall", {
           from,
           signalData,
-          callType, 
+          callType,
         });
       }
     });
 
+    // Answer call
     socket.on("answerCall", ({ to, signalData }) => {
       const receiverSocketId = userSocketMap.get(to);
       if (receiverSocketId) {
@@ -58,13 +60,13 @@ export function initIO(httpServer) {
       }
     });
 
+    // End call
     socket.on("endCall", ({ to }) => {
       const receiverSocketId = userSocketMap.get(to);
       if (receiverSocketId) {
         io.to(receiverSocketId).emit("callEnded");
       }
     });
-
     socket.on("disconnect", () => {
       if (userId) {
         userSocketMap.delete(userId);

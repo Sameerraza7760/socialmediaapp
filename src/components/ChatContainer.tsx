@@ -55,7 +55,7 @@ export default function ChatContainer({
     callUser,
     answerCall,
     leaveCall,
-    callEnded
+    callEnded,
   } = useCall(socket, dbUserId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -150,11 +150,11 @@ export default function ChatContainer({
   }, [chatId]);
 
   const handleVoiceCall = () => {
-    callUser(selectedUserId);
+    callUser(selectedUserId, "audio");
   };
 
   const handleVideoCall = () => {
-    callUser(selectedUserId);
+    callUser(selectedUserId, "video");
   };
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
@@ -274,6 +274,8 @@ export default function ChatContainer({
         callAccepted={callAccepted}
         callEnded={callEnded}
         leaveCall={leaveCall}
+        call={call} // ✅ Pass call state
+        answerCall={answerCall}
       />
     </div>
   );
