@@ -39,7 +39,32 @@ export function initIO(httpServer) {
       }
     });
 
-  
+
+     socket.on("callUser", ({ to, signalData, from, callType }) => {
+      const receiverSocketId = userSocketMap.get(to);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("incomingCall", {
+          from,
+          signalData,
+          callType, 
+        });
+      }
+    });
+
+    socket.on("answerCall", ({ to, signalData }) => {
+      const receiverSocketId = userSocketMap.get(to);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("callAccepted", { signalData });
+      }
+    });
+
+    socket.on("endCall", ({ to }) => {
+      const receiverSocketId = userSocketMap.get(to);
+      if (receiverSocketId) {
+        io.to(receiverSocketId).emit("callEnded");
+      }
+    });
+
     socket.on("disconnect", () => {
       if (userId) {
         userSocketMap.delete(userId);

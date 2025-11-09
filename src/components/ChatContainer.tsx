@@ -4,8 +4,16 @@ import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import CallModal from "./ui/CallModal";
 import { useMessage } from "@/hook/useMessage";
-import { ArrowLeft, ImageIcon, Loader2, Send } from "lucide-react";
+import {
+  ArrowLeft,
+  ImageIcon,
+  Send,
+  Loader2,
+  Phone,
+  Video,
+} from "lucide-react";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useSocketContext } from "@/context/SocketContext";
@@ -13,6 +21,8 @@ import { MessageSkeleton } from "./MessageSkeleton";
 import VoiceRecorder from "./ui/VoiceRecorder";
 import ImageUpload from "./ImageUpload";
 import toast from "react-hot-toast";
+import ChatContainerHeader from "./ui/ChatContainerHeader";
+import { useCall } from "@/hook/useCall";
 
 type Message = {
   id: string;
@@ -36,6 +46,17 @@ export default function ChatContainer({
   selectedUserId,
   dbUserId,
 }: ChatContainerProps) {
+  const { socket } = useSocketContext();
+  const {
+    myVideo,
+    userVideo,
+    call,
+    callAccepted,
+    callUser,
+    answerCall,
+    leaveCall,
+    callEnded
+  } = useCall(socket, dbUserId);
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -44,7 +65,6 @@ export default function ChatContainer({
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [audioUrl, setAudioUrl] = useState("");
   const { sendMessage, getMessages, messageMarkAsRead } = useMessage();
-  const { socket } = useSocketContext();
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -52,7 +72,7 @@ export default function ChatContainer({
       scrollRef.current.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-const handleSend = async (audio?: string) => {
+  const handleSend = async (audio?: string) => {
     const finalAudioUrl = audio || audioUrl;
 
     if (!newMessage.trim() && !imageUrl && !finalAudioUrl) return;
@@ -114,7 +134,6 @@ const handleSend = async (audio?: string) => {
     markAsRead();
   }, [chatId, messages]);
 
-  
   useEffect(() => {
     const fetchMessages = async () => {
       try {
@@ -130,24 +149,21 @@ const handleSend = async (audio?: string) => {
     fetchMessages();
   }, [chatId]);
 
+  const handleVoiceCall = () => {
+    callUser(selectedUserId);
+  };
+
+  const handleVideoCall = () => {
+    callUser(selectedUserId);
+  };
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       <Card className="flex flex-col h-full">
-        <CardHeader className="flex items-center justify-between border-b">
-          <div className="flex items-center gap-3 justify-between w-full">
-            <Link href="/inbox">
-              <ArrowLeft className="w-5 h-5 cursor-pointer" />
-            </Link>
-            <div className="flex justify-center gap-2 items-center">
-              <Avatar>
-                <AvatarImage src="/avatar.png" />
-              </Avatar>
-              <CardTitle className="text-base">Chat {chatId}</CardTitle>
-            </div>
-          </div>
-        </CardHeader>
-
-
+        <ChatContainerHeader
+          chatId={chatId}
+          onVoiceCall={handleVoiceCall}
+          onVideoCall={handleVideoCall}
+        />
         <CardContent className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/20 scroll-smooth">
           {loading ? (
             <MessageSkeleton />
@@ -251,6 +267,14 @@ const handleSend = async (audio?: string) => {
           </Button>
         </div>
       </Card>
+
+      <CallModal
+        myVideo={myVideo}
+        userVideo={userVideo}
+        callAccepted={callAccepted}
+        callEnded={callEnded}
+        leaveCall={leaveCall}
+      />
     </div>
   );
 }

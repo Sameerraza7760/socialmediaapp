@@ -27,7 +27,7 @@ export function useCall(socket: Socket | null, userId: string) {
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("callIncoming", ({ from, name, signal }) => {
+    socket.on("incomingCall", ({ from, name, signal }) => {
       setCall({ isReceivingCall: true, from, name, signal });
     });
 
@@ -48,7 +48,14 @@ export function useCall(socket: Socket | null, userId: string) {
 
     setCallAccepted(true);
 
-    const peer = new Peer({ initiator: false, trickle: false, stream });
+    const peer = new Peer({
+      initiator: true,
+      trickle: false,
+      stream,
+      config: {
+        iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }],
+      },
+    });
 
     peer.on("signal", (data) => {
       socket.emit("answerCall", { signal: data, to: call.from });
@@ -66,14 +73,22 @@ export function useCall(socket: Socket | null, userId: string) {
   const callUser = (id: string) => {
     if (!socket || !stream) return;
 
-    const peer = new Peer({ initiator: true, trickle: false, stream });
+    const peer = new Peer({
+      initiator: false,
+      trickle: false,
+      stream,
+      config: {
+        iceServers: [
+          { urls: ["stun:stun.l.google.com:19302"] }, // Google STUN
+        ],
+      },
+    });
 
     peer.on("signal", (data) => {
       socket.emit("callUser", {
-        userToCall: id,
-        signalData: data,
+        to: id,
+        signalData: data, // not `signal`
         from: userId,
-        name: "You",
       });
     });
 
