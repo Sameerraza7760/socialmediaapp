@@ -1,28 +1,23 @@
 "use client";
 
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import CallModal from "./ui/CallModal";
+import { useSocketContext } from "@/context/SocketContext";
+import { useCall } from "@/hook/useCall";
 import { useMessage } from "@/hook/useMessage";
 import {
-  ArrowLeft,
   ImageIcon,
-  Send,
   Loader2,
-  Phone,
-  Video,
+  Send
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { useSocketContext } from "@/context/SocketContext";
-import { MessageSkeleton } from "./MessageSkeleton";
-import VoiceRecorder from "./ui/VoiceRecorder";
-import ImageUpload from "./ImageUpload";
 import toast from "react-hot-toast";
+import ImageUpload from "./ImageUpload";
+import { MessageSkeleton } from "./MessageSkeleton";
+import CallModal from "./ui/CallModal";
 import ChatContainerHeader from "./ui/ChatContainerHeader";
-import { useCall } from "@/hook/useCall";
+import VoiceRecorder from "./ui/VoiceRecorder";
 
 type Message = {
   id: string;
@@ -274,7 +269,7 @@ export default function ChatContainer({
         callAccepted={callAccepted}
         callEnded={callEnded}
         leaveCall={leaveCall}
-        call={call} // ✅ Pass call state
+        call={call} 
         answerCall={answerCall}
       />
     </div>

@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
-import { Phone, PhoneOff, Video } from "lucide-react";
+import { Phone, PhoneOff } from "lucide-react";
 
 type CallModalProps = {
   myVideo: React.RefObject<HTMLVideoElement>;
@@ -23,6 +23,7 @@ export default function CallModal({
   call,
   answerCall,
 }: CallModalProps) {
+  if (callEnded) return null;
   if (!call?.isReceivingCall && !callAccepted) return null;
 
   const isVideo = call?.callType === "video";
@@ -30,7 +31,7 @@ export default function CallModal({
 
   return (
     <div className="fixed inset-0 bg-black/80 flex flex-col items-center justify-center z-50 text-white">
-      {/* Incoming Ringing Modal */}
+      {/* Incoming Call UI */}
       {!callAccepted && call?.isReceivingCall && (
         <div className="text-center space-y-6">
           <p className="text-lg font-medium">
@@ -54,20 +55,18 @@ export default function CallModal({
         </div>
       )}
 
-      {/* Call Ongoing */}
+      {/* Active Call UI */}
       {callAccepted && !callEnded && (
         <>
-          {/* 🎥 VIDEO CALL UI */}
+          {/* 🎥 VIDEO CALL */}
           {isVideo && (
             <div className="relative w-full max-w-4xl flex justify-center items-center">
-              {/* Remote video */}
               <video
                 playsInline
                 ref={userVideo}
                 autoPlay
                 className="w-full max-h-[80vh] rounded-lg border border-gray-400 shadow-lg"
               />
-              {/* Local video */}
               <video
                 playsInline
                 muted
@@ -84,7 +83,7 @@ export default function CallModal({
             </div>
           )}
 
-          {/* 🎧 AUDIO CALL UI */}
+          {/* 🎧 AUDIO CALL */}
           {isAudio && (
             <div className="flex flex-col items-center justify-center space-y-8">
               <Avatar className="w-24 h-24 border-2 border-white shadow-lg">
@@ -93,14 +92,12 @@ export default function CallModal({
 
               <p className="text-lg font-medium">Voice Call in Progress...</p>
 
-              <div className="flex gap-6">
-                <Button
-                  onClick={leaveCall}
-                  className="bg-red-600 hover:bg-red-700 flex items-center gap-2"
-                >
-                  <PhoneOff className="w-5 h-5" /> End
-                </Button>
-              </div>
+              <Button
+                onClick={leaveCall}
+                className="bg-red-600 hover:bg-red-700 flex items-center gap-2"
+              >
+                <PhoneOff className="w-5 h-5" /> End
+              </Button>
             </div>
           )}
         </>

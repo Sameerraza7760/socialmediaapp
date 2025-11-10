@@ -10,31 +10,46 @@ export function useCall(socket: Socket | null, userId: string) {
 
   const myVideo = useRef<HTMLVideoElement>(null);
   const userVideo = useRef<HTMLVideoElement>(null);
-  const connectionRef = useRef<any>(null);
+  const connectionRef = useRef<Peer.Instance | null>(null);
 
-  // 🔹 1. Handle incoming call events (no camera access here)
+  // 🔹 Listen for socket events
   useEffect(() => {
     if (!socket) return;
 
-    socket.on("incomingCall", ({ from, signalData, callType }) => {
-      console.log("📞 Incoming call from:", from, "type:", callType);
-      setCall({ isReceivingCall: true, from, signal: signalData, callType });
-    });
+    const handleIncomingCall = ({ from, signalData, callType }: any) => {
+      setCall({
+        isReceivingCall: true,
+        from,
+        signal: signalData,
+        callType,
+      });
+      setCallAccepted(false);
+      setCallEnded(false);
+    };
 
-    socket.on("callEnded", () => {
-      console.log("🚪 Call ended");
-      endStream();
-      setCallEnded(true);
-      connectionRef.current?.destroy();
-    });
+    const handleCallAccepted = ({ signalData }: any) => {
+      if (connectionRef.current) {
+        connectionRef.current.signal(signalData);
+        setCallAccepted(true);
+      }
+    };
+
+    const handleCallEnded = () => {
+      handleCallEnd();
+    };
+
+    socket.on("incomingCall", handleIncomingCall);
+    socket.on("callAccepted", handleCallAccepted);
+    socket.on("callEnded", handleCallEnded);
 
     return () => {
-      socket.off("incomingCall");
-      socket.off("callEnded");
+      socket.off("incomingCall", handleIncomingCall);
+      socket.off("callAccepted", handleCallAccepted);
+      socket.off("callEnded", handleCallEnded);
     };
   }, [socket]);
 
-  // 🔹 2. Get media only when needed
+  // 🔹 Get user media (camera/mic)
   const getMediaStream = async (callType: "video" | "audio") => {
     try {
       const media = await navigator.mediaDevices.getUserMedia({
@@ -47,35 +62,34 @@ export function useCall(socket: Socket | null, userId: string) {
       }
       return media;
     } catch (err) {
-      console.error("🎥 Media error:", err);
+      console.error("Media error:", err);
       return null;
     }
   };
 
-  // 🔹 3. Answer call
+  // 🔹 Answer an incoming call
   const answerCall = async () => {
     if (!socket || !call) return;
-    console.log("✅ Answering call...");
-
     const media = await getMediaStream(call.callType);
     if (!media) return;
 
     setCallAccepted(true);
+    setCallEnded(false);
 
     const peer = new Peer({
       initiator: false,
       trickle: false,
       stream: media,
-      config: { iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }] },
+      config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] },
     });
 
-    peer.on("signal", (data) => {
-      socket.emit("answerCall", { signalData: data, to: call.from });
+    peer.on("signal", (signalData) => {
+      socket.emit("answerCall", { signalData, to: call.from });
     });
 
-    peer.on("stream", (currentStream) => {
+    peer.on("stream", (remoteStream) => {
       if (userVideo.current && call.callType === "video") {
-        userVideo.current.srcObject = currentStream;
+        userVideo.current.srcObject = remoteStream;
       }
     });
 
@@ -83,58 +97,68 @@ export function useCall(socket: Socket | null, userId: string) {
     connectionRef.current = peer;
   };
 
-  // 🔹 4. Start (initiate) call
+  
   const callUser = async (id: string, callType: "video" | "audio" = "video") => {
     if (!socket) return;
-
     const media = await getMediaStream(callType);
+    console.log("media",media)
     if (!media) return;
+
+    setCallEnded(false);
+    setCallAccepted(false);
+
+    // ✅ Set call state for outgoing call (important for modal)
+    setCall({
+      isReceivingCall: false,
+      from: userId,
+      to: id,
+      callType,
+    });
 
     const peer = new Peer({
       initiator: true,
       trickle: false,
       stream: media,
-      config: { iceServers: [{ urls: ["stun:stun.l.google.com:19302"] }] },
+      config: { iceServers: [{ urls: "stun:stun.l.google.com:19302" }] },
     });
 
-    peer.on("signal", (data) => {
-      socket.emit("callUser", {
-        to: id,
-        from: userId,
-        signalData: data,
-        callType,
-      });
+    peer.on("signal", (signalData) => {
+      socket.emit("callUser", { to: id, from: userId, signalData, callType });
     });
 
-    peer.on("stream", (currentStream) => {
+    peer.on("stream", (remoteStream) => {
       if (userVideo.current && callType === "video") {
-        userVideo.current.srcObject = currentStream;
+        userVideo.current.srcObject = remoteStream;
       }
-    });
-
-    socket.on("callAccepted", (signal) => {
-      setCallAccepted(true);
-      peer.signal(signal.signalData);
     });
 
     connectionRef.current = peer;
   };
 
-  // 🔹 5. End call
+  // 🔹 Leave or end call
   const leaveCall = () => {
-    console.log("❌ Ending call...");
-    setCallEnded(true);
-    connectionRef.current?.destroy();
-    endStream();
-    if (socket && call) socket.emit("endCall", { to: call.from });
+    if (socket && call?.from) {
+      socket.emit("endCall", { to: call.from });
+    }
+    handleCallEnd();
   };
 
-  // 🔹 6. Helper to stop camera & mic
-  const endStream = () => {
+  // 🔹 Handle call cleanup
+  const handleCallEnd = () => {
+    setCallEnded(true);
+    setCallAccepted(false);
+    setCall(null);
+
+    if (connectionRef.current) {
+      connectionRef.current.destroy();
+      connectionRef.current = null;
+    }
+
     if (stream) {
-      stream.getTracks().forEach((track) => track.stop());
+      stream.getTracks().forEach((t) => t.stop());
       setStream(null);
     }
+
     if (myVideo.current) myVideo.current.srcObject = null;
     if (userVideo.current) userVideo.current.srcObject = null;
   };
@@ -150,3 +174,4 @@ export function useCall(socket: Socket | null, userId: string) {
     leaveCall,
   };
 }
+
